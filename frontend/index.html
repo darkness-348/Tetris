@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="description" content="CyberTetris Online: Juego de Tetris competitivo 1v1 en tiempo real con WebSockets, frontend en TypeScript y backend FastAPI." />
+    <meta name="theme-color" content="#0a0b14" />
+    <title>CyberTetris Online // 1v1 Real-Time Battle</title>
+    
+    <!-- Google Fonts: Orbitron (Cyberpunk/Arcade) & Outfit (Modern UI) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- Top Cyberpunk Status Bar -->
+    <header class="app-header">
+      <div class="header-logo">
+        <span class="logo-glitch" data-text="CYBER">CYBER</span><span class="logo-highlight">TETRIS</span>
+        <span class="badge-online">ONLINE 1v1</span>
+      </div>
+      <div class="header-status">
+        <button id="btn-open-traffic" class="btn-traffic-badge" title="Ver Monitor de Tráfico del Servidor">
+          <span class="traffic-pulse-dot"></span>
+          <span class="traffic-text">Tráfico: <strong id="traffic-counter-pill">0</strong> reqs</span>
+        </button>
+        <div class="server-badge" id="server-status" title="Conexión con FastAPI">
+          <span class="status-dot"></span>
+          <span class="status-text" id="server-text">Conectando...</span>
+        </div>
+        <button id="btn-audio-toggle" class="btn-icon" title="Silenciar / Activar Sonido" aria-label="Audio">
+          <span id="audio-icon" class="audio-icon-wrap">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-container">
+      
+      <!-- 1. LOBBY SCREEN -->
+      <section id="screen-lobby" class="screen active">
+        <div class="lobby-card">
+          <div class="hero-banner">
+            <h1 class="hero-title">BATALLA <span class="neon-text">TETRIS</span> ONLINE</h1>
+            <p class="hero-subtitle">FastAPI (Python) + TypeScript Real-Time WebSockets</p>
+          </div>
+
+          <!-- Player Profile Box -->
+          <div class="profile-box glass-panel">
+            <div class="profile-avatar" id="player-avatar-preview">
+              <span class="avatar-tag">PILOT</span>
+            </div>
+            <div class="profile-info">
+              <label for="player-name-input">NOMBRE DE PILOTO</label>
+              <div class="input-with-button">
+                <input type="text" id="player-name-input" maxlength="15" placeholder="Tu Apodo..." value="Pilot-77" />
+                <button id="btn-random-name" class="btn-secondary" title="Generar nombre aleatorio" aria-label="Generar nombre aleatorio">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Game Modes Grid -->
+          <div class="mode-grid">
+            <!-- Mode 1: Solo Classic (Most popular / direct play) -->
+            <button id="btn-mode-solo" class="mode-card card-solo">
+              <div class="mode-icon-badge solo">SOLO</div>
+              <div class="mode-details">
+                <h3>MODO CLÁSICO (SOLO)</h3>
+                <p>Entrena en solitario, consigue tu máxima puntuación y sube al ranking global.</p>
+              </div>
+              <span class="mode-action">Jugar Solo &rarr;</span>
+            </button>
+
+            <!-- Mode 2: Quick Match -->
+            <button id="btn-mode-quick" class="mode-card card-quick">
+              <div class="mode-icon-badge pvp">1v1</div>
+              <div class="mode-details">
+                <h3>PARTIDA RÁPIDA 1v1</h3>
+                <p>Encuentra a un oponente online al instante y compite enviando líneas basura.</p>
+              </div>
+              <span class="mode-action">Buscar Rival &rarr;</span>
+            </button>
+
+            <!-- Mode 3: Private Room -->
+            <div class="mode-card card-room">
+              <div class="mode-icon-badge room">SALA</div>
+              <div class="mode-details">
+                <h3>SALA PRIVADA</h3>
+                <p>Crea una sala con código de 6 dígitos o únete a una partida de un amigo.</p>
+                <div class="room-actions">
+                  <button id="btn-create-room" class="btn-primary">Crear Sala</button>
+                  <div class="join-room-group">
+                    <input type="text" id="join-room-code-input" placeholder="CÓDIGO" maxlength="6" />
+                    <button id="btn-join-room" class="btn-secondary">Unirse</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lobby Footer Navigation -->
+          <div class="lobby-actions">
+            <button id="btn-open-leaderboard" class="btn-nav">
+              <span class="nav-tag">TOP</span> Ranking Global
+            </button>
+            <button id="btn-open-traffic-lobby" class="btn-nav">
+              <span class="nav-tag">NET</span> Monitor de Tráfico
+            </button>
+            <button id="btn-open-controls" class="btn-nav">
+              <span class="nav-tag">GUÍA</span> Controles & Reglas
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. MATCHMAKING RADAR SCREEN -->
+      <section id="screen-queue" class="screen">
+        <div class="queue-card glass-panel">
+          <div class="radar-container">
+            <div class="radar-circle"></div>
+            <div class="radar-sweep"></div>
+            <div class="radar-blip"></div>
+          </div>
+          <h2 class="queue-title">BUSCANDO OPONENTE...</h2>
+          <p class="queue-desc">Sincronizando con el servidor de emparejamiento WebSocket</p>
+          <button id="btn-cancel-queue" class="btn-secondary-glow">Cancelar Búsqueda</button>
+        </div>
+      </section>
+
+      <!-- 3. PRIVATE ROOM LOBBY SCREEN -->
+      <section id="screen-room-lobby" class="screen">
+        <div class="room-lobby-card glass-panel">
+          <div class="room-code-badge">
+            <span class="room-code-label">CÓDIGO DE SALA:</span>
+            <span id="room-code-display" class="room-code-value">------</span>
+            <button id="btn-copy-room-code" class="btn-secondary btn-copy" title="Copiar código">COPIAR</button>
+          </div>
+          <p class="room-instructions">Comparte este código con tu rival para empezar el combate 1v1.</p>
+
+          <div class="players-slots">
+            <div class="player-slot active" id="slot-player-1">
+              <div class="slot-avatar-tag">J1</div>
+              <div class="slot-name" id="slot-name-1">Tú</div>
+              <div class="slot-status ready">LISTO</div>
+            </div>
+            <div class="slot-vs">VS</div>
+            <div class="player-slot" id="slot-player-2">
+              <div class="slot-avatar-tag">J2</div>
+              <div class="slot-name" id="slot-name-2">Esperando rival...</div>
+              <div class="slot-status" id="slot-status-2">PENDIENTE</div>
+            </div>
+          </div>
+
+          <div class="room-lobby-buttons">
+            <button id="btn-room-ready" class="btn-primary-glow">¡ESTOY LISTO!</button>
+            <button id="btn-leave-room" class="btn-secondary">Abandonar Sala</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. LIVE BATTLE ARENA SCREEN -->
+      <section id="screen-game" class="screen">
+        <!-- Level Up / Speed Escalation Banner -->
+        <div id="level-up-banner" class="level-up-banner">
+          <span class="banner-icon">&gt;&gt;</span>
+          <span id="level-up-text" class="banner-text">ACELERACIÓN: NIVEL 2</span>
+        </div>
+
+        <!-- Countdown overlay -->
+        <div id="countdown-overlay" class="countdown-overlay">
+          <div id="countdown-number" class="countdown-number">3</div>
+        </div>
+
+        <div class="arena-container">
+          
+          <!-- Player Panel (Left) -->
+          <div class="game-side player-side">
+            <div class="side-header">
+              <div class="player-tag">
+                <span class="player-badge">TÚ</span>
+                <span id="display-player-name" class="player-name-text">Pilot</span>
+              </div>
+              <div class="side-header-pills">
+                <div class="stat-pill" title="Nivel de dificultad actual">
+                  <span class="stat-pill-label">NIVEL</span>
+                  <span id="hud-level" class="stat-pill-value">1</span>
+                </div>
+                <div class="stat-pill" title="Multiplicador de velocidad de caída">
+                  <span class="stat-pill-label">VEL</span>
+                  <span id="hud-speed" class="stat-pill-value speed-val">1.0x</span>
+                </div>
+                <div class="stat-pill" title="Tiempo de supervivencia">
+                  <span class="stat-pill-label">TIEMPO</span>
+                  <span id="hud-timer" class="stat-pill-value">00:00</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="board-layout">
+              <!-- Left Column: Hold & Stats -->
+              <div class="board-column-left">
+                <div class="mini-box glass-panel hold-box">
+                  <div class="mini-title">HOLD</div>
+                  <canvas id="canvas-hold"></canvas>
+                </div>
+                <div class="stats-panel glass-panel">
+                  <div class="stat-row">
+                    <span class="stat-label">PUNTOS</span>
+                    <span id="hud-score" class="stat-value">0</span>
+                  </div>
+                  <div class="stat-row">
+                    <span class="stat-label">LÍNEAS</span>
+                    <span id="hud-lines" class="stat-value">0</span>
+                  </div>
+                  <div class="stat-row" id="hud-combo-row">
+                    <span class="stat-label">RACHA</span>
+                    <span id="hud-combos" class="stat-value">0x</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Center: Main Board + Garbage Meter -->
+              <div class="board-center-wrapper">
+                <div class="garbage-meter-container" title="Líneas de basura entrantes">
+                  <div id="garbage-meter-bar" class="garbage-meter-bar"></div>
+                </div>
+                <div class="canvas-shadow-wrap">
+                  <canvas id="canvas-main"></canvas>
+                </div>
+              </div>
+
+              <!-- Right Column: Next Queue -->
+              <div class="board-column-right">
+                <div class="mini-box glass-panel next-box">
+                  <div class="mini-title">SIGUIENTE</div>
+                  <canvas id="canvas-next"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center VS & Battle Info -->
+          <div class="battle-center-column" id="battle-center">
+            <div class="vs-glow-badge">VS</div>
+            
+            <!-- In-game Attack Feed -->
+            <div id="attack-feed" class="attack-feed"></div>
+
+            <!-- In-game Quick Reactions / Emotes (Zero emojis, cyber quick-chat) -->
+            <div class="reactions-panel glass-panel">
+              <span class="reactions-title">REACCIONES</span>
+              <div class="reaction-buttons">
+                <button class="btn-emote" data-emoji="GG">GG</button>
+                <button class="btn-emote" data-emoji="PRO">PRO</button>
+                <button class="btn-emote" data-emoji="WOW">WOW</button>
+                <button class="btn-emote" data-emoji="FAST">FAST</button>
+                <button class="btn-emote" data-emoji="OOPS">OOPS</button>
+              </div>
+            </div>
+
+            <button id="btn-surrender" class="btn-text-danger" title="Rendirse o salir al lobby">Abandonar</button>
+          </div>
+
+          <!-- Opponent Panel (Right - only visible in 1v1 multiplayer) -->
+          <div class="game-side opponent-side" id="opponent-panel">
+            <div class="side-header">
+              <div class="player-tag opponent-tag">
+                <span class="player-badge rival">RIVAL</span>
+                <span id="display-opponent-name" class="player-name-text">Oponente</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-pill-label">NIVEL</span>
+                <span id="opp-hud-level" class="stat-pill-value">1</span>
+              </div>
+            </div>
+
+            <div class="board-layout opponent-layout">
+              <div class="canvas-shadow-wrap mini-wrap">
+                <canvas id="canvas-opponent"></canvas>
+              </div>
+              <div class="stats-panel glass-panel opponent-stats">
+                <div class="stat-row">
+                  <span class="stat-label">PUNTOS</span>
+                  <span id="opp-hud-score" class="stat-value">0</span>
+                </div>
+                <div class="stat-row">
+                  <span class="stat-label">LÍNEAS</span>
+                  <span id="opp-hud-lines" class="stat-value">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Mobile Virtual On-Screen Controller (For Phones / Touch) -->
+        <div id="mobile-touch-controls" class="mobile-controls-panel">
+          <div class="touch-cluster cluster-left">
+            <button id="touch-btn-left" class="touch-btn touch-btn-dir" aria-label="Mover Izquierda">
+              <svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="touch-col-middle">
+              <button id="touch-btn-hard-drop" class="touch-btn touch-btn-drop" aria-label="Caída Instantánea (Hard Drop)">
+                <span class="touch-key-text">DROP</span>
+              </button>
+              <button id="touch-btn-soft-drop" class="touch-btn touch-btn-dir" aria-label="Caída Suave (Soft Drop)">
+                <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <button id="touch-btn-right" class="touch-btn touch-btn-dir" aria-label="Mover Derecha">
+              <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+
+          <div class="touch-cluster cluster-right">
+            <button id="touch-btn-hold" class="touch-btn touch-btn-hold" aria-label="Guardar Pieza (Hold)">
+              <span class="touch-key-text">HOLD</span>
+            </button>
+            <button id="touch-btn-rot-ccw" class="touch-btn touch-btn-rot" aria-label="Rotar Antihorario">
+              <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3v5h5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="touch-sub-text">CCW</span>
+            </button>
+            <button id="touch-btn-rot-cw" class="touch-btn touch-btn-rot accent" aria-label="Rotar Horario">
+              <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 3v5h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="touch-sub-text">ROT</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Floating Emotes Animation Overlay -->
+    <div id="floating-emotes-layer" class="floating-emotes-layer"></div>
+
+    <!-- MODAL: Leaderboard -->
+    <div id="modal-leaderboard" class="modal-backdrop">
+      <div class="modal-card glass-panel">
+        <div class="modal-header">
+          <h2>TABLA DE CLASIFICACIÓN</h2>
+          <button class="btn-close-modal" id="btn-close-leaderboard">&times;</button>
+        </div>
+        <p class="modal-sub">Puntuaciones sincronizadas en tiempo real con FastAPI SQLite Backend</p>
+        
+        <div class="leaderboard-table-container">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>POS</th>
+                <th>PILOTO</th>
+                <th>PUNTOS</th>
+                <th>LÍNEAS</th>
+                <th>NIVEL</th>
+                <th>FECHA</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-tbody">
+              <tr>
+                <td colspan="6" class="table-loading">Cargando puntuaciones...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="modal-footer">
+          <button id="btn-refresh-leaderboard" class="btn-secondary">Actualizar Datos</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Controls & Rules -->
+    <div id="modal-controls" class="modal-backdrop">
+      <div class="modal-card glass-panel">
+        <div class="modal-header">
+          <h2>CONTROLES Y REGLAS DE COMBATE</h2>
+          <button class="btn-close-modal" id="btn-close-controls">&times;</button>
+        </div>
+        <div class="controls-content">
+          <div class="controls-section-title">TECLADO (PC)</div>
+          <div class="controls-grid">
+            <div class="control-item">
+              <span class="key-badge">&larr; / &rarr;</span>
+              <span class="key-desc">Mover Pieza a Izquierda / Derecha</span>
+            </div>
+            <div class="control-item">
+              <span class="key-badge">&darr;</span>
+              <span class="key-desc">Caída Suave (Soft Drop)</span>
+            </div>
+            <div class="control-item">
+              <span class="key-badge">ESPACIO</span>
+              <span class="key-desc">Caída Instantánea (Hard Drop)</span>
+            </div>
+            <div class="control-item">
+              <span class="key-badge">&uarr; / X</span>
+              <span class="key-desc">Rotar en Sentido Horario</span>
+            </div>
+            <div class="control-item">
+              <span class="key-badge">Z</span>
+              <span class="key-desc">Rotar en Sentido Antihorario</span>
+            </div>
+            <div class="control-item">
+              <span class="key-badge">C / SHIFT</span>
+              <span class="key-desc">Guardar Pieza (Hold)</span>
+            </div>
+          </div>
+
+          <div class="controls-section-title" style="margin-top: 16px;">TÁCTIL (CELULAR / TABLET)</div>
+          <div class="controls-grid">
+            <div class="control-item">
+              <span class="key-badge">BOTONES TÁCTILES</span>
+              <span class="key-desc">D-Pad virtual inferior con repetición rápida continua</span>
+            </div>
+            <div class="control-item">
+              <span class="key-badge">GESTOS EN PANTALLA</span>
+              <span class="key-desc">Deslizar izquierda/derecha para mover, tocar para rotar</span>
+            </div>
+          </div>
+
+          <div class="rules-section">
+            <h3>MECÁNICA DE COMBATE 1v1 (LÍNEAS BASURA)</h3>
+            <p>Al limpiar líneas envías líneas de basura al rival con un hueco aleatorio:</p>
+            <ul>
+              <li><strong>2 Líneas (Double):</strong> Envías 1 línea de basura</li>
+              <li><strong>3 Líneas (Triple):</strong> Envías 2 líneas de basura</li>
+              <li><strong>4 Líneas (TETRIS):</strong> Envías 4 líneas de basura devastadoras</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Match Results (1v1 Victory/Defeat) -->
+    <div id="modal-match-result" class="modal-backdrop">
+      <div class="modal-card glass-panel result-card">
+        <div id="result-badge" class="result-badge victory">¡VICTORIA!</div>
+        <h2 id="result-title">HAS DERROTADO A TU RIVAL</h2>
+        <p id="result-desc">Tu rival ha superado el límite del tablero.</p>
+
+        <div class="result-stats-grid">
+          <div class="result-stat-box">
+            <span class="stat-name">Puntuación</span>
+            <span id="res-score" class="stat-num">0</span>
+          </div>
+          <div class="result-stat-box">
+            <span class="stat-name">Líneas Limpiadas</span>
+            <span id="res-lines" class="stat-num">0</span>
+          </div>
+          <div class="result-stat-box">
+            <span class="stat-name">Líneas Enviadas</span>
+            <span id="res-sent" class="stat-num">0</span>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          <button id="btn-request-rematch" class="btn-primary-glow">Solicitar Revancha</button>
+          <button id="btn-result-lobby" class="btn-secondary">Volver al Menú</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Solo Game Over (Submit High Score) -->
+    <div id="modal-solo-gameover" class="modal-backdrop">
+      <div class="modal-card glass-panel">
+        <div class="gameover-title">PARTIDA FINALIZADA</div>
+        <p class="gameover-sub">Has alcanzado el límite del tablero.</p>
+
+        <div class="result-stats-grid">
+          <div class="result-stat-box">
+            <span class="stat-name">Puntos Totales</span>
+            <span id="solo-final-score" class="stat-num">0</span>
+          </div>
+          <div class="result-stat-box">
+            <span class="stat-name">Líneas</span>
+            <span id="solo-final-lines" class="stat-num">0</span>
+          </div>
+          <div class="result-stat-box">
+            <span class="stat-name">Nivel Alcanzado</span>
+            <span id="solo-final-level" class="stat-num">1</span>
+          </div>
+        </div>
+
+        <div class="save-score-section">
+          <div class="auto-saved-badge">
+            <span class="badge-icon">[OK]</span>
+            <span class="badge-text">Derrota y estadísticas <strong>guardadas automáticamente</strong> en el backend (SQLite)</span>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">Petición HTTP enviada a: <code>POST /api/game/record-loss</code></p>
+          <div id="save-status-msg" class="save-status-msg success">Registrado con éxito en el servidor</div>
+        </div>
+
+        <div class="result-actions">
+          <button id="btn-solo-retry" class="btn-secondary-glow">Jugar Otra Partida</button>
+          <button id="btn-solo-lobby" class="btn-secondary">Volver al Lobby</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Live Server Traffic Control Monitor -->
+    <div id="modal-traffic" class="modal-backdrop">
+      <div class="modal-card glass-panel traffic-modal-card">
+        <div class="modal-header">
+          <h2>MONITOR DE CONTROL DE TRÁFICO (FastAPI)</h2>
+          <button class="btn-close-modal" id="btn-close-traffic">&times;</button>
+        </div>
+        <p class="modal-sub">Métricas en tiempo real de todas las peticiones generadas por el juego al servidor backend</p>
+
+        <!-- KPI Grid -->
+        <div class="traffic-kpi-grid">
+          <div class="traffic-kpi">
+            <span class="kpi-label">Peticiones HTTP</span>
+            <span class="kpi-value cyan" id="kpi-http">0</span>
+          </div>
+          <div class="traffic-kpi">
+            <span class="kpi-label">Piezas Servidor (RNG)</span>
+            <span class="kpi-value yellow" id="kpi-pieces">0</span>
+          </div>
+          <div class="traffic-kpi">
+            <span class="kpi-label">Derrotas Auto-Guardadas</span>
+            <span class="kpi-value magenta" id="kpi-losses">0</span>
+          </div>
+          <div class="traffic-kpi">
+            <span class="kpi-label">Mensajes WebSocket</span>
+            <span class="kpi-value green" id="kpi-ws">0</span>
+          </div>
+          <div class="traffic-kpi">
+            <span class="kpi-label">Bytes Transferidos</span>
+            <span class="kpi-value blue" id="kpi-bytes">0 KB</span>
+          </div>
+        </div>
+
+        <!-- Live Requests Table -->
+        <div class="traffic-logs-header">
+          <h3>Registro de Peticiones en Vivo (Live Feed)</h3>
+          <span class="pulse-indicator">Actualización en tiempo real</span>
+        </div>
+        <div class="traffic-table-container">
+          <table class="traffic-table">
+            <thead>
+              <tr>
+                <th>HORA</th>
+                <th>MÉTODO</th>
+                <th>ENDPOINT / RUTA</th>
+                <th>ESTADO</th>
+                <th>LATENCIA</th>
+                <th>TAMAÑO</th>
+              </tr>
+            </thead>
+            <tbody id="traffic-table-tbody">
+              <tr>
+                <td colspan="6" class="table-loading">Cargando métricas de tráfico...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="modal-footer">
+          <button id="btn-refresh-traffic" class="btn-secondary">Forzar Actualización</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
