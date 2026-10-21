@@ -268,7 +268,7 @@ const engine = new TetrisEngine(
               engine.holdPiece
             );
             boardUpdateThrottleTimer = null;
-          }, 80);
+          }, 50);
         }
       }
     },
@@ -683,29 +683,112 @@ function initEventListeners() {
   // Mobile Touch Controls & Gestures
   initTouchControls();
 
-  // Keyboard Handlers
-  window.addEventListener('keydown', (e) => {
-    // Ignore input if typing in an input field or modal active
-    if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+  // ─── DAS / ARR Keyboard System (competitive-grade responsiveness) ───
+  // DAS = Delayed Auto Shift: initial delay before auto-repeat starts
+  // ARR = Auto Repeat Rate: interval between repeated actions once DAS fires
+  // Tuned for instant responsiveness (snappy competitive feel)
+  const DAS_DELAY = 65;     // ms before auto-repeat starts (reduced from 100ms for fast onset)
+  const ARR_INTERVAL = 12;  // ms between repeated moves (reduced from 30ms for ultra-fast gliding)
+  const SOFT_DROP_DAS = 25; // ms before soft drop repeat kicks in (near instantaneous)
+  const SOFT_DROP_ARR = 8;  // ms between soft drop steps (instantaneous drop)
 
-    if (!isInMatch || engine.isGameOver) return;
+  interface KeyState {
+    action: () => void;
+    dasTimer: number | null;
+    arrTimer: number | null;
+  }
 
-    switch (e.code) {
+  const activeKeys: Map<string, KeyState> = new Map();
+  const heldPhysicalKeys = new Set<string>();
+
+  const LEFT_CODES = ['ArrowLeft', 'KeyA'];
+  const RIGHT_CODES = ['ArrowRight', 'KeyD'];
+  const DOWN_CODES = ['ArrowDown', 'KeyS'];
+
+  function isLeftKey(code: string) { return LEFT_CODES.includes(code); }
+  function isRightKey(code: string) { return RIGHT_CODES.includes(code); }
+
+  function stopKeyRepeat(code: string) {
+    const entry = activeKeys.get(code);
+    if (entry) {
+      if (entry.dasTimer) clearTimeout(entry.dasTimer);
+      if (entry.arrTimer) clearInterval(entry.arrTimer);
+      activeKeys.delete(code);
+    }
+  }
+
+  function startKeyRepeat(code: string) {
+    const repeatAction = getKeyAction(code);
+    if (!repeatAction) return;
+    if (activeKeys.has(code)) return; // already active
+
+    // Execute immediately on press with zero delay
+    repeatAction();
+
+    const isSoftDrop = DOWN_CODES.includes(code);
+    const dasDelay = isSoftDrop ? SOFT_DROP_DAS : DAS_DELAY;
+    const arrRate = isSoftDrop ? SOFT_DROP_ARR : ARR_INTERVAL;
+
+    const dasTimer = window.setTimeout(() => {
+      const arrTimer = window.setInterval(() => {
+        if (!isInMatch || engine.isGameOver) {
+          stopKeyRepeat(code);
+          return;
+        }
+        repeatAction();
+      }, arrRate);
+
+      const entry = activeKeys.get(code);
+      if (entry) {
+        entry.arrTimer = arrTimer;
+      }
+    }, dasDelay);
+
+    activeKeys.set(code, { action: repeatAction, dasTimer, arrTimer: null });
+  }
+
+  function getKeyAction(code: string): (() => void) | null {
+    switch (code) {
       case 'ArrowLeft':
       case 'KeyA':
-        engine.moveLeft();
-        e.preventDefault();
-        break;
+        return () => engine.moveLeft();
       case 'ArrowRight':
       case 'KeyD':
-        engine.moveRight();
-        e.preventDefault();
-        break;
+        return () => engine.moveRight();
       case 'ArrowDown':
       case 'KeyS':
-        engine.softDrop();
-        e.preventDefault();
-        break;
+        return () => engine.softDrop();
+      default:
+        return null;
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+    if (!isInMatch || engine.isGameOver) return;
+
+    const code = e.code;
+    heldPhysicalKeys.add(code);
+
+    // Repeatable keys with high-speed DAS/ARR and opposing direction resolution
+    const repeatAction = getKeyAction(code);
+    if (repeatAction) {
+      e.preventDefault();
+      if (activeKeys.has(code)) return; // already repeating this key
+
+      // Priority cancellation: pressing opposite direction cancels the active one immediately
+      if (isLeftKey(code)) {
+        RIGHT_CODES.forEach(stopKeyRepeat);
+      } else if (isRightKey(code)) {
+        LEFT_CODES.forEach(stopKeyRepeat);
+      }
+
+      startKeyRepeat(code);
+      return;
+    }
+
+    // Non-repeatable keys (instant, single action)
+    switch (code) {
       case 'Space':
         engine.hardDrop();
         e.preventDefault();
@@ -728,6 +811,36 @@ function initEventListeners() {
         break;
     }
   });
+
+  window.addEventListener('keyup', (e) => {
+    const code = e.code;
+    heldPhysicalKeys.delete(code);
+
+    stopKeyRepeat(code);
+
+    // If an opposing horizontal direction is still held physically, immediately reactivate it
+    if (isLeftKey(code)) {
+      const stillHeldRight = RIGHT_CODES.find(k => heldPhysicalKeys.has(k));
+      if (stillHeldRight && !activeKeys.has(stillHeldRight)) {
+        startKeyRepeat(stillHeldRight);
+      }
+    } else if (isRightKey(code)) {
+      const stillHeldLeft = LEFT_CODES.find(k => heldPhysicalKeys.has(k));
+      if (stillHeldLeft && !activeKeys.has(stillHeldLeft)) {
+        startKeyRepeat(stillHeldLeft);
+      }
+    }
+  });
+
+  // Clear all active keys when window loses focus
+  window.addEventListener('blur', () => {
+    activeKeys.forEach((entry) => {
+      if (entry.dasTimer) clearTimeout(entry.dasTimer);
+      if (entry.arrTimer) clearInterval(entry.arrTimer);
+    });
+    activeKeys.clear();
+    heldPhysicalKeys.clear();
+  });
 }
 
 // Mobile Virtual Gamepad & Screen Touch Gestures
@@ -740,7 +853,7 @@ function initTouchControls() {
   const btnRotCcw = document.getElementById('touch-btn-rot-ccw');
   const btnHold = document.getElementById('touch-btn-hold');
 
-  function bindContinuous(el: HTMLElement | null, action: () => void, initialDelay = 150, repeatInterval = 48) {
+  function bindContinuous(el: HTMLElement | null, action: () => void, initialDelay = 60, repeatInterval = 14) {
     if (!el) return;
     let timer: number | null = null;
     let intervalTimer: number | null = null;
@@ -800,9 +913,9 @@ function initTouchControls() {
     el.addEventListener('mousedown', trigger);
   }
 
-  bindContinuous(btnLeft, () => engine.moveLeft());
-  bindContinuous(btnRight, () => engine.moveRight());
-  bindContinuous(btnSoftDrop, () => engine.softDrop(), 100, 40);
+  bindContinuous(btnLeft, () => engine.moveLeft(), 60, 14);
+  bindContinuous(btnRight, () => engine.moveRight(), 60, 14);
+  bindContinuous(btnSoftDrop, () => engine.softDrop(), 30, 8);
 
   bindSingle(btnHardDrop, () => engine.hardDrop());
   bindSingle(btnRotCw, () => engine.rotate(1));
@@ -831,7 +944,7 @@ function initTouchControls() {
     const touch = e.touches[0];
     const dx = touch.clientX - lastSwipeX;
     const dy = touch.clientY - touchStartY;
-    const colThreshold = 22;
+    const colThreshold = 10;
 
     if (Math.abs(dx) >= colThreshold) {
       const steps = Math.trunc(dx / colThreshold);
@@ -842,7 +955,7 @@ function initTouchControls() {
       lastSwipeX += steps * colThreshold;
     }
 
-    if (dy > 30) {
+    if (dy > 14) {
       engine.softDrop();
       touchStartY = touch.clientY;
     }
@@ -856,12 +969,12 @@ function initTouchControls() {
     const totalDistY = (e.changedTouches[0]?.clientY || touchStartY) - touchStartY;
 
     // Quick tap -> rotate
-    if (duration < 220 && totalDistX < 15 && Math.abs(totalDistY) < 15) {
+    if (duration < 180 && totalDistX < 15 && Math.abs(totalDistY) < 15) {
       engine.rotate(1);
-    } else if (totalDistY > 60 && duration < 260) {
+    } else if (totalDistY > 50 && duration < 220) {
       // Swipe down -> Hard drop
       engine.hardDrop();
-    } else if (totalDistY < -50 && duration < 300) {
+    } else if (totalDistY < -40 && duration < 260) {
       // Swipe up -> Hold
       engine.hold();
     }

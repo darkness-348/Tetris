@@ -56,8 +56,14 @@ class SoundSynthesizer {
     }
   }
 
+  private lastMoveSoundTime = 0;
+  private lastDropSoundTime = 0;
+
   public playMove() {
-    this.playTone(320, 'square', 0.05, 0.08);
+    const now = performance.now();
+    if (now - this.lastMoveSoundTime < 45) return;
+    this.lastMoveSoundTime = now;
+    this.playTone(320, 'square', 0.04, 0.07);
   }
 
   public playRotate() {
@@ -65,7 +71,10 @@ class SoundSynthesizer {
   }
 
   public playDrop() {
-    this.playTone(180, 'square', 0.06, 0.1);
+    const now = performance.now();
+    if (now - this.lastDropSoundTime < 35) return;
+    this.lastDropSoundTime = now;
+    this.playTone(180, 'square', 0.05, 0.09);
   }
 
   public playHardDrop() {

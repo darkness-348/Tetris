@@ -3,8 +3,13 @@ import type { LeaderboardEntry } from './types.ts';
 const host = (typeof window !== 'undefined' && window.location.hostname) ? window.location.hostname : '127.0.0.1';
 const protocol = (typeof window !== 'undefined' && window.location.protocol === 'https:') ? 'https:' : 'http:';
 const wsProtocol = (typeof window !== 'undefined' && window.location.protocol === 'https:') ? 'wss:' : 'ws:';
-const API_BASE = `${protocol}//${host}:8000`;
-const WS_BASE = `${wsProtocol}//${host}:8000/ws`;
+
+// In production (Docker/Nginx), API and WS are proxied through the same origin (port 80).
+// In development, Vite serves on port 5173 and the backend runs on port 8000.
+const isDev = typeof window !== 'undefined' && window.location.port === '5173';
+const API_BASE = isDev ? `${protocol}//${host}:8000` : `${protocol}//${host}${window.location.port ? ':' + window.location.port : ''}`;
+const WS_BASE = isDev ? `${wsProtocol}//${host}:8000/ws` : `${wsProtocol}//${host}${window.location.port ? ':' + window.location.port : ''}/ws`;
+
 
 export interface NetworkCallbacks {
   onConnected?: (clientId: string) => void;

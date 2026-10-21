@@ -460,9 +460,13 @@ export class TetrisEngine {
         });
       }
 
-      // Remove cleared rows and push empty rows on top
+      // Remove cleared rows first (clearedIndices is already in descending order
+      // from the bottom-to-top scan, so splicing highest index first keeps lower indices valid)
       for (const rowIdx of clearedIndices) {
         this.matrix.splice(rowIdx, 1);
+      }
+      // Then bulk-add empty rows on top
+      for (let i = 0; i < linesCleared; i++) {
         this.matrix.unshift(new Array(BOARD_WIDTH).fill(0));
       }
 

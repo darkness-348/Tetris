@@ -139,3 +139,24 @@ npm run dev
 Abre en tu navegador favorito:
 👉 **`http://127.0.0.1:5173`**
 
+---
+
+## 🐳 Ejecución con Docker y PostgreSQL
+
+El proyecto cuenta con **Docker Compose** configurado para desplegar automáticamente **PostgreSQL**, el backend de FastAPI y el frontend:
+
+```bash
+docker compose up -d --build
+```
+(O ejecutando el script `start-docker.bat` en Windows).
+
+### 🗄️ Servicios y Puertos por Defecto:
+- **PostgreSQL Database**: Puerto **`5432:5432`** (puerto por defecto de PostgreSQL expuesto al host)
+  - **Host local:** `localhost:5432`
+  - **Base de datos:** `tetris_db`
+  - **Usuario:** `postgres`
+  - **Contraseña:** `postgres`
+  - **Volumen persistente:** `postgres-data`
+- **Frontend Web**: Puerto **`80:80`** (`http://localhost`)
+- **Backend FastAPI**: Interno en red Docker (o accesible en `http://localhost:8000`)
+
