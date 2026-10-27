@@ -330,8 +330,8 @@ async def websocket_endpoint(websocket: WebSocket):
                             "players": [p.name for p in room.players.values()]
                         })
 
-            # 4. Player Ready
-            elif msg_type == "player_ready":
+            # 4. Player Ready & Start Match
+            elif msg_type in ("player_ready", "start_game"):
                 room = manager.get_room_by_client(client_id)
                 if room:
                     player = room.get_player(client_id)
@@ -343,9 +343,13 @@ async def websocket_endpoint(websocket: WebSocket):
                         "ready": True
                     })
 
-                    if len(room.players) == 2 and all(p.is_ready for p in room.players.values()):
-                        room.state = "countdown"
-                        asyncio.create_task(run_game_countdown(room))
+                    # If both players are ready or start_game is called with 2 players in waiting state
+                    if len(room.players) == 2 and room.state == "waiting":
+                        if msg_type == "start_game" or all(p.is_ready for p in room.players.values()):
+                            for p in room.players.values():
+                                p.is_ready = True
+                            room.state = "countdown"
+                            asyncio.create_task(run_game_countdown(room))
 
             # 5. Live Board Sync
             elif msg_type == "board_update":

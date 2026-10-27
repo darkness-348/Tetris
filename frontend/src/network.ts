@@ -44,6 +44,7 @@ export class NetworkManager {
   public clientId: string = '';
   public isConnected: boolean = false;
   private reconnectTimer: number | null = null;
+  private sendQueue: any[] = [];
 
   constructor(callbacks: NetworkCallbacks = {}) {
     this.callbacks = callbacks;
@@ -178,6 +179,14 @@ export class NetworkManager {
           clearTimeout(this.reconnectTimer);
           this.reconnectTimer = null;
         }
+        while (this.sendQueue.length > 0) {
+          const msg = this.sendQueue.shift();
+          try {
+            this.ws?.send(JSON.stringify(msg));
+          } catch (e) {
+            console.warn('Error sending queued WS message:', e);
+          }
+        }
       };
 
       this.ws.onmessage = (event) => {
@@ -265,6 +274,8 @@ export class NetworkManager {
   public send(data: any) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
+    } else {
+      this.sendQueue.push(data);
     }
   }
 
@@ -282,6 +293,10 @@ export class NetworkManager {
 
   public sendReady() {
     this.send({ type: 'player_ready' });
+  }
+
+  public startGame() {
+    this.send({ type: 'start_game' });
   }
 
   public sendBoardUpdate(

@@ -146,7 +146,7 @@
             <div class="player-slot active" id="slot-player-1">
               <div class="slot-avatar-tag">J1</div>
               <div class="slot-name" id="slot-name-1">Tú</div>
-              <div class="slot-status ready">LISTO</div>
+              <div class="slot-status" id="slot-status-1">PENDIENTE</div>
             </div>
             <div class="slot-vs">VS</div>
             <div class="player-slot" id="slot-player-2">
@@ -314,6 +314,14 @@
             </div>
             <button id="touch-btn-right" class="touch-btn touch-btn-dir" aria-label="Mover Derecha">
               <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+
+          <!-- Middle floating opacity switch for transparent controls on phone -->
+          <div class="touch-center-tools">
+            <button id="btn-touch-opacity" class="touch-pill-btn" aria-label="Cambiar transparencia" title="Ajustar transparencia">
+              <span class="opacity-icon">&#9680;</span>
+              <span id="opacity-label">TRANSPARENTE</span>
             </button>
           </div>
 

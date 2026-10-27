@@ -40,10 +40,10 @@ const btnCancelQueue = document.getElementById('btn-cancel-queue')!;
 const btnOpenLeaderboard = document.getElementById('btn-open-leaderboard')!;
 const btnOpenControls = document.getElementById('btn-open-controls')!;
 
-// Room Lobby Elements
 const roomCodeDisplay = document.getElementById('room-code-display')!;
 const btnCopyRoomCode = document.getElementById('btn-copy-room-code')!;
 const slotName1 = document.getElementById('slot-name-1')!;
+const slotStatus1 = document.getElementById('slot-status-1');
 const slotName2 = document.getElementById('slot-name-2')!;
 const slotStatus2 = document.getElementById('slot-status-2')!;
 const btnRoomReady = document.getElementById('btn-room-ready')!;
@@ -151,20 +151,31 @@ const network = new NetworkManager({
     currentRoomId = roomId;
     roomCodeDisplay.textContent = roomId;
     slotName1.textContent = playerName;
+    if (slotStatus1) {
+      slotStatus1.textContent = 'PENDIENTE';
+      slotStatus1.className = 'slot-status';
+    }
     slotName2.textContent = 'Esperando rival...';
     slotStatus2.textContent = 'PENDIENTE';
     slotStatus2.className = 'slot-status';
+    btnRoomReady.textContent = '¡ESTOY LISTO!';
+    btnRoomReady.classList.remove('ready');
     showScreen('room-lobby');
   },
   onRoomJoined: (roomId, _seed, players) => {
     currentRoomId = roomId;
     roomCodeDisplay.textContent = roomId;
     slotName1.textContent = playerName;
+    if (slotStatus1) {
+      slotStatus1.textContent = 'PENDIENTE';
+      slotStatus1.className = 'slot-status';
+    }
     if (players.length > 1) {
       opponentName = players.find((p) => p !== playerName) || 'Rival';
       slotName2.textContent = opponentName;
       slotStatus2.textContent = 'CONECTADO';
       slotStatus2.className = 'slot-status ready';
+      btnRoomReady.textContent = '¡INICIAR PARTIDA!';
     }
     showScreen('room-lobby');
   },
@@ -173,6 +184,7 @@ const network = new NetworkManager({
     slotName2.textContent = oppName;
     slotStatus2.textContent = 'CONECTADO';
     slotStatus2.className = 'slot-status ready';
+    btnRoomReady.textContent = '¡INICIAR PARTIDA!';
   },
   onMatchFound: (roomId, _seed, oppName) => {
     currentRoomId = roomId;
@@ -188,13 +200,30 @@ const network = new NetworkManager({
   onOpponentReady: () => {
     slotStatus2.textContent = '¡LISTO!';
     slotStatus2.className = 'slot-status ready';
+    if (btnRoomReady.classList.contains('ready')) {
+      network.startGame();
+    }
   },
   onCountdown: (count) => {
+    if (currentMode !== 'solo') {
+      displayPlayerName.textContent = playerName;
+      displayOpponentName.textContent = opponentName || 'Rival';
+      opponentPanel.style.display = 'flex';
+      battleCenter.style.display = 'flex';
+    }
+    showScreen('game');
     countdownOverlay.classList.add('active');
     countdownNumber.textContent = String(count);
     sound.playCountdown(false);
   },
   onGameStart: (seed) => {
+    if (currentMode !== 'solo') {
+      displayPlayerName.textContent = playerName;
+      displayOpponentName.textContent = opponentName || 'Rival';
+      opponentPanel.style.display = 'flex';
+      battleCenter.style.display = 'flex';
+    }
+    showScreen('game');
     countdownNumber.textContent = '¡YA!';
     sound.playCountdown(true);
     setTimeout(() => {
@@ -573,8 +602,13 @@ function initEventListeners() {
   // Room Lobby Ready Button
   btnRoomReady.addEventListener('click', () => {
     network.sendReady();
+    network.startGame();
     btnRoomReady.textContent = '¡PREPARADO!';
     btnRoomReady.classList.add('ready');
+    if (slotStatus1) {
+      slotStatus1.textContent = '¡LISTO!';
+      slotStatus1.className = 'slot-status ready';
+    }
   });
 
   btnLeaveRoom.addEventListener('click', () => {
@@ -852,6 +886,38 @@ function initTouchControls() {
   const btnRotCw = document.getElementById('touch-btn-rot-cw');
   const btnRotCcw = document.getElementById('touch-btn-rot-ccw');
   const btnHold = document.getElementById('touch-btn-hold');
+  const btnTouchOpacity = document.getElementById('btn-touch-opacity');
+  const opacityLabel = document.getElementById('opacity-label');
+  const mobileControlsPanel = document.getElementById('mobile-touch-controls');
+
+  // Touch Gamepad Opacity Presets for mobile
+  const opacityLevels = [
+    { id: 'opacity-med', label: 'TRANS. 40%' },
+    { id: 'opacity-low', label: 'TRANS. 20%' },
+    { id: 'opacity-high', label: 'SÓLIDO 80%' },
+  ];
+  let currentOpacityIdx = 0;
+  const savedOpacity = localStorage.getItem('cybertetris_touch_opacity') || 'opacity-med';
+  const foundIdx = opacityLevels.findIndex((l) => l.id === savedOpacity);
+  if (foundIdx !== -1) currentOpacityIdx = foundIdx;
+
+  function applyOpacity() {
+    if (!mobileControlsPanel) return;
+    opacityLevels.forEach((l) => mobileControlsPanel?.classList.remove(l.id));
+    const current = opacityLevels[currentOpacityIdx];
+    mobileControlsPanel.classList.add(current.id);
+    if (opacityLabel) opacityLabel.textContent = current.label;
+    localStorage.setItem('cybertetris_touch_opacity', current.id);
+  }
+  applyOpacity();
+
+  if (btnTouchOpacity) {
+    btnTouchOpacity.addEventListener('click', (e) => {
+      e.preventDefault();
+      currentOpacityIdx = (currentOpacityIdx + 1) % opacityLevels.length;
+      applyOpacity();
+    });
+  }
 
   function bindContinuous(el: HTMLElement | null, action: () => void, initialDelay = 60, repeatInterval = 14) {
     if (!el) return;
